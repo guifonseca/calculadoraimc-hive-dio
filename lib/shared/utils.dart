@@ -53,7 +53,7 @@ class Utils {
     return ClassificacaoIMCEnum.obesidadeGrau3;
   }
 
-  static Color? getIMCAvatarColor(ClassificacaoIMCEnum classificacaoIMC) {
+  static Color? getIMCAvatarColor(ClassificacaoIMCEnum? classificacaoIMC) {
     switch (classificacaoIMC) {
       case ClassificacaoIMCEnum.saudavel:
         return Colors.green;

@@ -1,6 +1,8 @@
 import 'package:calculadoraimcdio/model/enums.dart';
 import 'package:calculadoraimcdio/model/imc_model.dart';
+import 'package:calculadoraimcdio/model/usuario_model.dart';
 import 'package:calculadoraimcdio/repositories/imc_repository.dart';
+import 'package:calculadoraimcdio/repositories/usuario_repository.dart';
 import 'package:calculadoraimcdio/shared/list_tile_field.dart';
 import 'package:calculadoraimcdio/shared/utils.dart';
 import 'package:flutter/material.dart';
@@ -14,14 +16,15 @@ class ListImcPage extends StatefulWidget {
 }
 
 class _ListImcPageState extends State<ListImcPage> {
-  final ImcRepository imcRepository = ImcRepository();
+  late UsuarioRepository _usuarioRepository;
+  late ImcRepository _imcRepository;
 
-  List<ImcModel>? _imcs;
+  var _usuario = UsuarioModel();
+  var _imcs = const <ImcModel>[];
+
   String _mensagem = "";
 
-  TextEditingController nomeController = TextEditingController(text: "");
   TextEditingController pesoController = TextEditingController(text: "");
-  TextEditingController alturaController = TextEditingController(text: "");
 
   @override
   void initState() {
@@ -30,7 +33,10 @@ class _ListImcPageState extends State<ListImcPage> {
   }
 
   void obterListaImcs() async {
-    _imcs = await imcRepository.listarImcs();
+    _usuarioRepository = await UsuarioRepository.carregar();
+    _imcRepository = await ImcRepository.carregar();
+    _usuario = _usuarioRepository.obterUsuario() ?? UsuarioModel();
+    _imcs = _imcRepository.listarImcs();
     setState(() {});
   }
 
@@ -40,78 +46,75 @@ class _ListImcPageState extends State<ListImcPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Lista de IMC"),
+        title: const Text("IMC App"),
       ),
-      body: _imcs == null
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              itemCount: _imcs?.length ?? 0,
-              itemBuilder: (context, index) {
-                var imc = _imcs![index];
-                return Dismissible(
-                    key: Key(imc.id),
-                    onDismissed: (direction) async {
-                      await imcRepository.remove(imc.id);
-                      obterListaImcs();
-                    },
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: ListTile(
-                          isThreeLine: true,
-                          leading: CircleAvatar(
-                              backgroundColor:
-                                  Utils.getIMCAvatarColor(imc.classificacaoIMC),
-                              child: Text(
-                                imc.classificacaoIMC.sigla,
-                                style: const TextStyle(color: Colors.white),
-                              )),
-                          title: Text(
-                            imc.nome,
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  ListTileField(
-                                      title: "Peso:",
-                                      value: NumberFormat("0.00", "pt_BR")
-                                          .format(imc.peso)),
-                                  const SizedBox(
-                                    width: 20,
-                                    child: Center(child: Text("/")),
-                                  ),
-                                  ListTileField(
-                                      title: "Altura:",
-                                      value: NumberFormat("0.00", "pt_BR")
-                                          .format(imc.altura)),
-                                ],
-                              ),
-                              ListTileField(
-                                  title: "IMC:",
-                                  value: imc.classificacaoIMC.classificacao),
-                              ListTileField(
-                                title: "Data/Hora:",
-                                value:
-                                    "${imc.horario.day.toString().padLeft(2, '0')}/${imc.horario.month.toString().padLeft(2, '0')}/${imc.horario.year} ${imc.horario.hour}:${imc.horario.second.toString().padLeft(2, '0')}",
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ));
+      body: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        itemCount: _imcs.length,
+        itemBuilder: (context, index) {
+          var imc = _imcs[index];
+          return Dismissible(
+              key: Key(imc.id),
+              onDismissed: (direction) {
+                _imcRepository.remove(imc);
+                obterListaImcs();
               },
-            ),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: ListTile(
+                    isThreeLine: true,
+                    leading: CircleAvatar(
+                        backgroundColor: Utils.getIMCAvatarColor(
+                            ClassificacaoIMCEnum.getBySigla(
+                                imc.classificacaoIMC)),
+                        child: Text(
+                          imc.classificacaoIMC,
+                          style: const TextStyle(color: Colors.white),
+                        )),
+                    title: Text(
+                      _usuario.nome ?? "",
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            ListTileField(
+                                title: "Peso:",
+                                value: NumberFormat("0.00", "pt_BR")
+                                    .format(imc.peso)),
+                            const SizedBox(
+                              width: 20,
+                              child: Center(child: Text("/")),
+                            ),
+                            ListTileField(
+                                title: "Altura:",
+                                value: NumberFormat("0.00", "pt_BR")
+                                    .format(imc.altura)),
+                          ],
+                        ),
+                        ListTileField(
+                            title: "IMC:",
+                            value: ClassificacaoIMCEnum.getBySigla(
+                                        imc.classificacaoIMC)
+                                    ?.classificacao ??
+                                ""),
+                        ListTileField(
+                          title: "Data/Hora:",
+                          value: imc.horario,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ));
+        },
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          nomeController.text = "";
           pesoController.text = "";
-          alturaController.text = "";
           _mensagem = "";
           showDialog(
               context: context,
@@ -126,31 +129,8 @@ class _ListImcPageState extends State<ListImcPage> {
                           ),
                           TextField(
                               decoration:
-                                  const InputDecoration(label: Text("Nome")),
-                              controller: nomeController),
-                          Row(
-                            children: [
-                              Expanded(
-                                  flex: 1,
-                                  child: TextField(
-                                    decoration: const InputDecoration(
-                                        label: Text("Peso")),
-                                    keyboardType: TextInputType.number,
-                                    controller: pesoController,
-                                  )),
-                              Container(
-                                width: 10,
-                              ),
-                              Expanded(
-                                  flex: 1,
-                                  child: TextField(
-                                    decoration: const InputDecoration(
-                                        label: Text("Altura")),
-                                    keyboardType: TextInputType.number,
-                                    controller: alturaController,
-                                  ))
-                            ],
-                          )
+                                  const InputDecoration(label: Text("Peso")),
+                              controller: pesoController),
                         ],
                       ),
                       actions: [
@@ -161,23 +141,15 @@ class _ListImcPageState extends State<ListImcPage> {
                             child: const Text("Cancelar")),
                         TextButton(
                             onPressed: () async {
+                              DateFormat format =
+                                  DateFormat("dd/MM/yyyy HH:mm");
                               double peso = double.tryParse(pesoController.text
                                       .replaceAll(",", ".")) ??
                                   0.0;
-                              double altura = double.tryParse(alturaController
-                                      .text
-                                      .replaceAll(",", ".")) ??
-                                  0.0;
-                              double imc = Utils.calcularIMC(peso, altura);
+                              double imc = Utils.calcularIMC(
+                                  peso, _usuario.altura ?? 0.0);
                               ClassificacaoIMCEnum classificacaoIMC =
                                   Utils.verificarClassificao(imc);
-
-                              if (nomeController.text.length < 3) {
-                                stfSetState(() {
-                                  _mensagem = "Nome inválido";
-                                });
-                                return;
-                              }
 
                               if (peso.isNaN ||
                                   peso.isInfinite ||
@@ -188,23 +160,14 @@ class _ListImcPageState extends State<ListImcPage> {
                                 return;
                               }
 
-                              if (altura.isNaN ||
-                                  altura.isInfinite ||
-                                  altura == 0.0) {
-                                stfSetState(() {
-                                  _mensagem = "Altura inválida";
-                                });
-                                return;
-                              }
-
                               Navigator.pop(context);
-                              await imcRepository.adicionar(ImcModel(
-                                  nomeController.text,
+                              _imcRepository.adicionar(ImcModel.criar(
                                   peso,
-                                  altura,
+                                  _usuario.altura!,
                                   imc,
-                                  classificacaoIMC));
-                              setState(() {});
+                                  classificacaoIMC.sigla,
+                                  format.format(DateTime.now())));
+                              obterListaImcs();
                             },
                             child: const Text("Salvar"))
                       ],

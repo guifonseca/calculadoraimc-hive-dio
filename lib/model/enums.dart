@@ -13,4 +13,13 @@ enum ClassificacaoIMCEnum {
 
   final String classificacao;
   final String sigla;
+
+  static ClassificacaoIMCEnum? getBySigla(String sigla) {
+    for (var element in ClassificacaoIMCEnum.values) {
+      if (element.sigla == sigla) {
+        return element;
+      }
+    }
+    return null;
+  }
 }

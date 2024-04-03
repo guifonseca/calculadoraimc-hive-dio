@@ -1,20 +1,33 @@
 import 'package:calculadoraimcdio/model/imc_model.dart';
+import 'package:hive/hive.dart';
 
 class ImcRepository {
-  final List<ImcModel> _imcs = [];
+  static late Box _box;
 
-  Future<void> adicionar(ImcModel imc) async {
-    await Future.delayed(const Duration(milliseconds: 100));
-    _imcs.add(imc);
+  ImcRepository._criar();
+
+  static Future<ImcRepository> carregar() async {
+    if (Hive.isBoxOpen('imcModel')) {
+      _box = Hive.box('imcModel');
+    } else {
+      _box = await Hive.openBox('imcModel');
+    }
+    return ImcRepository._criar();
   }
 
-  Future<List<ImcModel>> listarImcs() async {
-    await Future.delayed(const Duration(seconds: 2));
-    return _imcs;
+  void adicionar(ImcModel imc) {
+    _box.add(imc);
   }
 
-  Future<void> remove(String id) async {
-    await Future.delayed(const Duration(milliseconds: 50));
-    _imcs.remove(_imcs.where((element) => element.id == id).first);
+  List<ImcModel> listarImcs() {
+    return _box.values.cast<ImcModel>().toList();
+  }
+
+  void remove(ImcModel imc) {
+    imc.delete();
+  }
+
+  Future<void> clear() async {
+    await _box.clear();
   }
 }
